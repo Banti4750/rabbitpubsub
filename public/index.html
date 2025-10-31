@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RabbitMQ PubSub Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        #login-container h1 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        #login-container input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        #login-container input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #login-container button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #login-container button:hover {
+            background: #5568d3;
+        }
+
+        #chat-container {
+            display: none;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            width: 90%;
+            height: 600px;
+            flex-direction: column;
+        }
+
+        #chat-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #chat-header h2 {
+            margin: 0;
+        }
+
+        #logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid white;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .message.user-message {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.other-message {
+            background: white;
+            border: 1px solid #ddd;
+        }
+
+        .message.control-message {
+            background: #ffeaa7;
+            text-align: center;
+            margin: 5px auto;
+            font-style: italic;
+            max-width: 100%;
+        }
+
+        .message-user {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .message-text {
+            font-size: 15px;
+        }
+
+        .message-time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        #message-form {
+            display: flex;
+            padding: 20px;
+            border-top: 1px solid #ddd;
+            background: white;
+            border-radius: 0 0 10px 10px;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 15px;
+            margin-right: 10px;
+        }
+
+        #message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #send-btn {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        #send-btn:hover {
+            background: #5568d3;
+        }
+
+        .error {
+            color: #e74c3c;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        #connection-status {
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            background: #ffeaa7;
+            display: none;
+        }
+
+        #connection-status.connected {
+            background: #55efc4;
+        }
+
+        #connection-status.disconnected {
+            background: #fab1a0;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="login-container">
+        <h1>RabbitMQ Chat</h1>
+        <p>Enter your username to join</p>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Username" required autocomplete="off">
+            <button type="submit">Join Chat</button>
+        </form>
+        <div id="login-error" class="error"></div>
+    </div>
+
+    <div id="chat-container">
+        <div id="connection-status"></div>
+        <div id="chat-header">
+            <h2>Chat Room</h2>
+            <button id="logout-btn">Logout</button>
+        </div>
+        <div id="messages"></div>
+        <form id="message-form">
+            <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
+            <button type="submit" id="send-btn">Send</button>
+        </form>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let socket;
+        let currentUser = '';
+
+        const loginContainer = document.getElementById('login-container');
+        const chatContainer = document.getElementById('chat-container');
+        const loginForm = document.getElementById('login-form');
+        const loginError = document.getElementById('login-error');
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('message-input');
+        const messagesDiv = document.getElementById('messages');
+        const logoutBtn = document.getElementById('logout-btn');
+        const connectionStatus = document.getElementById('connection-status');
+
+        // Login
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+
+            if (!username) {
+                loginError.textContent = 'Please enter a username';
+                return;
+            }
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentUser = data.user;
+                    loginContainer.style.display = 'none';
+                    chatContainer.style.display = 'flex';
+                    initializeSocket();
+                } else {
+                    loginError.textContent = 'Failed to login';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                loginError.textContent = 'Connection error';
+            }
+        });
+
+        // Initialize Socket.io connection
+        function initializeSocket() {
+            socket = io({
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                console.log('Connected to server');
+                showConnectionStatus('Connected', 'connected');
+                socket.emit('join');
+            });
+
+            socket.on('disconnect', () => {
+                console.log('Disconnected from server');
+                showConnectionStatus('Disconnected - Reconnecting...', 'disconnected');
+            });
+
+            socket.on('chat', (data) => {
+                const message = JSON.parse(data);
+                displayMessage(message);
+            });
+
+            socket.on('connect_error', (error) => {
+                console.error('Connection error:', error);
+                showConnectionStatus('Connection Error', 'disconnected');
+            });
+        }
+
+        // Send message
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+
+            if (message && socket) {
+                socket.emit('chat', JSON.stringify({ msg: message }));
+                messageInput.value = '';
+            }
+        });
+
+        // Display message
+        function displayMessage(message) {
+            const messageDiv = document.createElement('div');
+
+            if (message.action === 'control') {
+                messageDiv.className = 'message control-message';
+                messageDiv.innerHTML = `
+                    <div class="message-text"><strong>${message.user}</strong>${message.msg}</div>
+                `;
+            } else {
+                const isCurrentUser = message.user === currentUser;
+                messageDiv.className = `message ${isCurrentUser ? 'user-message' : 'other-message'}`;
+
+                const time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : '';
+
+                messageDiv.innerHTML = `
+                    ${!isCurrentUser ? `<div class="message-user">${message.user}</div>` : ''}
+                    <div class="message-text">${escapeHtml(message.msg)}</div>
+                    ${time ? `<div class="message-time">${time}</div>` : ''}
+                `;
+            }
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Show connection status
+        function showConnectionStatus(text, className) {
+            connectionStatus.textContent = text;
+            connectionStatus.className = className;
+            connectionStatus.style.display = 'block';
+
+            setTimeout(() => {
+                if (className === 'connected') {
+                    connectionStatus.style.display = 'none';
+                }
+            }, 3000);
+        }
+
+        // Logout
+        logoutBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+            }
+            window.location.href = '/logout';
+        });
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+
+</html>

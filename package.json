@@ -1,17 +1,36 @@
 {
-    "name":"rabbitpubsub",
-    "version":"0.0.1",
-    "private":true,
-    "scripts":{
-        "start":"node app"
+    "name": "rabbitpubsub",
+    "version": "2.0.0",
+    "description": "Express + Socket.io chat app with Redis session store & RabbitMQ PubSub - Migrated to latest libraries",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js",
+        "dev": "nodemon app.js"
     },
-    "dependencies":{
-        "express":"3.x",
-        "ejs":"*",
-        "socket.io":"*" ,
-        "session.socket.io":"*",
-        "redis": "*",
-        "connect-redis": "*",
-        "amqp": "*"
-    }
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "express": "^4.19.2",
+        "express-session": "^1.18.0",
+        "socket.io": "^4.7.5",
+        "connect-redis": "^7.1.1",
+        "redis": "^4.7.0",
+        "amqplib": "^0.10.4",
+        "cookie-parser": "^1.4.6",
+        "body-parser": "^1.20.2"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.4"
+    },
+    "keywords": [
+        "socket.io",
+        "rabbitmq",
+        "redis",
+        "pubsub",
+        "chat",
+        "express"
+    ],
+    "author": "Raja Rao DV (updated)",
+    "license": "MIT"
 }
